@@ -1,7 +1,11 @@
 package main
 
+import (
+	"github.com/charmbracelet/bubbles/list"
+)
 
-type Project struct {
+
+type Project struct { 
   //struct for todoist project
   ID string `json:"id"`
   Name string `json:"name"`
@@ -12,10 +16,11 @@ type Project struct {
   ParentID int `json:"parent_id"`
   ViewStyle string `json:"view_style"`
   URL string `json:"url"`
-  Tasks Tasks
 }
 
+
 type Projects []Project
+
 
 type Task struct {
   //struct for todoist item
@@ -54,6 +59,5 @@ type Label struct {
 type Labels []Label
 
 type model struct {
-    projects  Projects           // items on the to-do list
-    cursor   int                // which to-do list item our cursor is pointing at
+  list list.Model
 }

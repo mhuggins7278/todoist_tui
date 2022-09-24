@@ -4,99 +4,81 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
-func main() {
-	p := tea.NewProgram(initialModel())
-	if err := p.Start(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		os.Exit(1)
-	}
+// func main() {
+// 	p := tea.NewProgram(initialModel())
+// 	if err := p.Start(); err != nil {
+// 		fmt.Printf("Alas, there's been an error: %v", err)
+// 		os.Exit(1)
+// 	}
 
-}
+// }
 
-func getProjects() (Projects, error) {
-
+func getProjects() (items []list.Item) {
 	projects, err := get[Projects]("https://api.todoist.com/rest/v2/projects")
-
 	if err != nil {
-		return nil, err
+		return nil
 	}
-
-	return projects, nil
+	//convert projest to list.Item interface
+	for _, project := range projects {
+		items = append(items, project)
+	}
+	return
 }
 
-func initialModel() model {
-	projects, err := getProjects()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	return model{
-		// Our to-do list is a grocery list
-		projects: projects,
-	}
-}
+var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 func (m model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
 	return nil
+}
+
+func (p Project) FilterValue() string {
+	return p.Name
+}
+
+func (p Project) Title() string {
+	return p.Name
+}
+
+func (p Project) Description() string {
+	return p.Name
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
-	// Is it a key press?
 	case tea.KeyMsg:
-
-		// Cool, what was the actual key pressed?
-		switch msg.String() {
-
-		// These keys should exit the program.
-		case "ctrl+c", "q":
+		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
-
-		// The "up" and "k" keys move the cursor up
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-
-		// The "down" and "j" keys move the cursor down
-		case "down", "j":
-			if m.cursor < len(m.projects)-1 {
-				m.cursor++
-			}
-
-			// Return the updated model to the Bubble Tea runtime for processing.
-			// Note that we're not returning a command.
-			return m, nil
 		}
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
 	}
-	return m, nil
+
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
 }
 
 func (m model) View() string {
-	// The header
-	s := "What should we buy at the market?\n\n"
+	return docStyle.Render(m.list.View())
+}
 
-	// Iterate over our choices
-	for i, project := range m.projects {
+func main() {
 
-		// Is the cursor pointing at this choice?
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">" // cursor!
-		}
+	items := getProjects()
 
-		// Render the row
-		s += fmt.Sprintf("%s %s\n", cursor, project)
+	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
+	m.list.Title = "Projects"
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+
+	if err := p.Start(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
 	}
-
-	// The footer
-	s += "\nPress q to quit.\n"
-
-	// Send the UI for rendering
-	return s
 }
